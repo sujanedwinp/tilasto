@@ -1,0 +1,82 @@
+# Nebula Nosh Operations Data Explanation
+
+## File Overview
+**File Name:** `nebula_nosh_ops_data.csv`
+**Format:** Comma-Separated Values (CSV)
+**Context:** This dataset records operational details for "Nebula Nosh," likely a drone-based delivery service. It captures information about individual orders, including delivery performance, customer details, and environmental conditions.
+
+## Column Descriptions
+
+1.  **Order_ID**
+    *   **Description:** A unique identifier for each specific order.
+    *   **Format:** String (e.g., "NN-1000"). The prefix "NN" likely stands for Nebula Nosh.
+
+2.  **Date**
+    *   **Description:** The date when the order was placed or delivered.
+    *   **Format:** YYYY-MM-DD (e.g., "2025-02-13").
+
+3.  **Customer_Segment**
+    *   **Description:** The classification of the customer based on their tier or type.
+    *   **Values:** "VIP", "Individual", "Corporate".
+    *   **Note:** Some entries in this column are missing (empty).
+
+4.  **Drone_Model**
+    *   **Description:** The specific model of the drone used for the delivery.
+    *   **Values observed:** "Eco-Glide", "Swift-X", "Heavy-Lift".
+    *   **Data Quality Note:** There is a frequent variation "Swft-X" which is likely a typo for "Swift-X".
+
+5.  **Delivery_Time_Min**
+    *   **Description:** The duration of the delivery in minutes.
+    *   **Data Quality Note:** Contains anomalies such as negative values (e.g., -1) and unrealistically high values (e.g., 999) which may indicate data errors or missing/timed-out logs.
+
+6.  **Order_Value_USD**
+    *   **Description:** The monetary value of the order in US Dollars.
+    *   **Data Quality Note:** Some entries contain negative values (e.g., -170.29), which suggests data corruption or refunds logged incorrectly.
+
+7.  **Distance_KM**
+    *   **Description:** The distance from the kitchen/dispatch center to the delivery location in kilometers.
+
+8.  **Weather_Condition**
+    *   **Description:** The weather conditions recorded at the time of delivery.
+    *   **Values:** "Stormy", "Clear", "High Winds", "Rainy".
+
+9.  **Traffic_Density**
+    *   **Description:** A qualitative measure of air or ground traffic density affecting the route.
+    *   **Values:** "Medium", "High", "Low".
+    *   **Note:** Some entries are missing.
+
+10. **Customer_Rating**
+    *   **Description:** A numerical rating provided by the customer after the service.
+    *   **Values:** 1.0 to 5.0.
+    *   **Note:** Some values are missing.
+
+11. **Kitchen_ID**
+    *   **Description:** Identifier for the kitchen facility that prepared the order.
+    *   **Format:** String (e.g., "KITCH-5").
+
+12. **Promo_Code_Used**
+    *   **Description:** Indicates if a promotional code was applied to the order.
+    *   **Values:** "Yes", "No".
+
+13. **Refund_Issued**
+    *   **Description:** Indicates if a refund was issued for the order.
+    *   **Values:** "Yes", "No".
+
+14. **Late_Delivery**
+    *   **Description:** A boolean flag indicating if the delivery arrived later than the expected time.
+    *   **Values:** "True", "False".
+
+## Data Quality Observations
+*   **Typos:** The drone model "Swift-X" appears frequently as "Swft-X".
+*   **Anomalies:**
+    *   `Delivery_Time_Min` has placeholder values like `999` and impossible negative values.
+    *   `Order_Value_USD` has negative values.
+    *   `Distance_KM` also has instances of negative values (e.g., -285.54).
+*   **Missing Data:** Columns like `Customer_Segment`, `Traffic_Density`, and `Customer_Rating` have missing entries.
+
+## Potential Use Cases
+This dataset can be used for:
+*   **Performance Analysis:** Evaluating drone efficiency (`Delivery_Time_Min` vs. `Distance_KM`).
+*   **Data Cleaning:** identifying and correcting the typos and numerical errors noted above.
+*   **Predictive Modeling:** Predicting late deliveries based on weather and traffic.
+*   **Customer Satisfaction Analysis:** Correlating ratings with delivery times and weather conditions.

@@ -1,0 +1,520 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Nebula Nosh Executive Dashboard</title>
+    <!-- Chart.js for visualizations -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <!-- PapaParse for CSV parsing -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&display=swap" rel="stylesheet">
+    
+    <style>
+        :root {
+            --bg-color: #0F172A;
+            --card-bg: #1E293B;
+            --text-primary: #F8FAFC;
+            --text-secondary: #94A3B8;
+            --accent-color: #38BDF8;
+            --success-color: #4ADE80;
+            --warning-color: #FACC15;
+            --danger-color: #F87171;
+        }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-primary);
+            margin: 0;
+            padding: 20px;
+            line-height: 1.5;
+        }
+
+        h1, h2, h3 { color: var(--text-primary); margin-top: 0; }
+        
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        .header {
+            text-align: center;
+            margin-bottom: 40px;
+            padding: 20px;
+            border-bottom: 1px solid var(--card-bg);
+        }
+
+        .section {
+            margin-bottom: 60px;
+        }
+
+        .section-header {
+            margin-bottom: 20px;
+            border-left: 4px solid var(--accent-color);
+            padding-left: 16px;
+        }
+
+        .section-desc {
+            color: var(--text-secondary);
+            font-size: 1.1em;
+            margin-bottom: 20px;
+            background: rgba(255,255,255,0.05);
+            padding: 15px;
+            border-radius: 8px;
+        }
+
+        .grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 20px;
+        }
+
+        .card {
+            background-color: var(--card-bg);
+            border-radius: 12px;
+            padding: 24px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.3);
+            transition: transform 0.2s;
+        }
+
+        .card:hover {
+            transform: translateY(-2px);
+        }
+
+        .kpi-card {
+            text-align: center;
+        }
+
+        .kpi-value {
+            font-size: 2.5em;
+            font-weight: 700;
+            color: var(--accent-color);
+            margin: 10px 0;
+        }
+
+        .kpi-label {
+            color: var(--text-secondary);
+            text-transform: uppercase;
+            font-size: 0.85em;
+            letter-spacing: 1px;
+        }
+
+        .chart-container {
+            position: relative;
+            height: 300px;
+            width: 100%;
+        }
+
+        .takeaway {
+            margin-top: 15px;
+            padding-top: 15px;
+            border-top: 1px solid rgba(255,255,255,0.1);
+            font-size: 0.9em;
+            color: var(--success-color);
+            font-weight: 600;
+        }
+
+        .takeaway::before {
+            content: "💡 Takeaway: ";
+        }
+
+        /* Loading State */
+        #loading {
+            text-align: center;
+            padding: 50px;
+            font-size: 1.5em;
+        }
+
+        /* File Upload Fallback */
+        .file-upload {
+            background: var(--card-bg);
+            padding: 40px;
+            text-align: center;
+            border-radius: 12px;
+            border: 2px dashed var(--text-secondary);
+            margin: 20px 0;
+            display: none;
+        }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <div class="header">
+        <h1>🚀 Nebula Nosh Executive Dashboard</h1>
+        <p>Operational Insights & Business Health Report - 2025</p>
+    </div>
+
+    <!-- Data Loading Status -->
+    <div id="loading">Loading and cleaning data...</div>
+    
+    <div id="file-upload-section" class="file-upload">
+        <h3>Could not load data automatically.</h3>
+        <p>Please drop the <code>nebula_nosh_ops_data.csv</code> file here or click to upload.</p>
+        <input type="file" id="csv-file" accept=".csv" />
+    </div>
+
+    <div id="dashboard-content" style="display: none;">
+        
+        <!-- SECTION 1: DATA CLEANING -->
+        <div class="section">
+            <div class="section-header">
+                <h2>1. Data Cleaning & Integrity</h2>
+            </div>
+            <div class="section-desc">
+                <strong>What this shows and why it matters:</strong> 
+                Raw data is rarely perfect. This section tracks how many errors we fixed (typos, negative revenue, crazy delivery times) to ensure the decisions you make are based on <em>real</em> numbers, not glitches.
+            </div>
+            <div class="grid">
+                <div class="card kpi-card">
+                    <div class="kpi-label">Typos Fixed (Drone Models)</div>
+                    <div class="kpi-value" id="kpi-typos">0</div>
+                    <small style="color: var(--text-secondary)">"Swft-X" corrected to "Swift-X"</small>
+                </div>
+                <div class="card kpi-card">
+                    <div class="kpi-label">Negative/Zero Values Removed</div>
+                    <div class="kpi-value" id="kpi-financial">0</div>
+                    <small style="color: var(--text-secondary)">Bad Order Values & Times</small>
+                </div>
+                <div class="card kpi-card">
+                    <div class="kpi-label">Outliers Removed</div>
+                    <div class="kpi-value" id="kpi-outliers">0</div>
+                    <small style="color: var(--text-secondary)">Impossible times (e.g. 999 min)</small>
+                </div>
+                <div class="card kpi-card">
+                    <div class="kpi-label">Missing Data Points</div>
+                    <div class="kpi-value" id="kpi-missing">0</div>
+                    <small style="color: var(--text-secondary)">Ratings or Segments missing</small>
+                </div>
+            </div>
+        </div>
+
+        <!-- SECTION 2: REVENUE INSIGHTS -->
+        <div class="section">
+            <div class="section-header">
+                <h2>2. Revenue Trends</h2>
+            </div>
+            <div class="section-desc">
+                <strong>What this shows and why it matters:</strong>
+                Understand where our money comes from. We break down revenue by customer type and kitchen location to identify our "Cash Cows" and underperforming areas.
+            </div>
+            <div class="grid">
+                <div class="card">
+                    <h3>Revenue by Customer Segment</h3>
+                    <div class="chart-container">
+                        <canvas id="chart-revenue-segment"></canvas>
+                    </div>
+                    <div class="takeaway" id="takeaway-revenue-segment">Loading...</div>
+                </div>
+                <div class="card">
+                    <h3>Top Revenue Kitchens</h3>
+                    <div class="chart-container">
+                        <canvas id="chart-revenue-kitchen"></canvas>
+                    </div>
+                    <div class="takeaway" id="takeaway-revenue-kitchen">Loading...</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- SECTION 3: OPERATIONAL EFFICIENCY -->
+        <div class="section">
+            <div class="section-header">
+                <h2>3. Delivery Efficiency</h2>
+            </div>
+            <div class="section-desc">
+                <strong>What this shows and why it matters:</strong>
+                Speed is our product. We compare drone models against our 35-minute delivery promise to see which hardware is pulling its weight and which is dragging us down.
+            </div>
+            <div class="grid">
+                <div class="card">
+                    <h3>On-Time Delivery Rate by Model</h3>
+                    <div class="chart-container">
+                        <canvas id="chart-efficiency-model"></canvas>
+                    </div>
+                    <div class="takeaway" id="takeaway-efficiency">Loading...</div>
+                </div>
+                <div class="card kpi-card">
+                    <div class="kpi-label">Overall On-Time Rate</div>
+                    <div class="kpi-value" id="kpi-ontime-rate">0%</div>
+                    <small style="color: var(--text-secondary)">Goal: > 95%</small>
+                </div>
+            </div>
+        </div>
+
+        <!-- SECTION 4: RISK & EXPERIENCE -->
+        <div class="section">
+            <div class="section-header">
+                <h2>4. Risk & Customer Experience</h2>
+            </div>
+            <div class="section-desc">
+                <strong>What this shows and why it matters:</strong>
+                Weather is our biggest uncontrollable variable. We analyze how storms and wind impact customer happiness (ratings) and our bottom line (refunds) to plan better contingencies.
+            </div>
+            <div class="grid">
+                <div class="card">
+                    <h3>Effect of Weather on Ratings</h3>
+                    <div class="chart-container">
+                        <canvas id="chart-weather-rating"></canvas>
+                    </div>
+                    <div class="takeaway" id="takeaway-weather-rating">Loading...</div>
+                </div>
+                <div class="card">
+                    <h3>Refund Rate by Weather Condition</h3>
+                    <div class="chart-container">
+                        <canvas id="chart-weather-refund"></canvas>
+                    </div>
+                    <div class="takeaway" id="takeaway-weather-refund">Loading...</div>
+                </div>
+            </div>
+        </div>
+
+    </div>
+</div>
+
+<script>
+    // --- 1. CONFIG & SETUP ---
+    const CSV_FILE_PATH = 'nebula_nosh_ops_data.csv';
+    const MAX_DELIVERY_TIME = 180; // minutes, threshold for outlier
+    const DELIVERY_GOAL_MIN = 35; 
+
+    // --- 2. MAIN EXECUTION ---
+    document.addEventListener('DOMContentLoaded', () => {
+        // Try fetching the file
+        fetch(CSV_FILE_PATH)
+            .then(response => {
+                if (!response.ok) throw new Error("File not found");
+                return response.text();
+            })
+            .then(csvText => processData(csvText))
+            .catch(err => {
+                console.warn("Auto-fetch failed (likely CORS or file missing). Showing upload.", err);
+                document.getElementById('loading').style.display = 'none';
+                document.getElementById('file-upload-section').style.display = 'block';
+            });
+
+        // Handle Manual Upload
+        document.getElementById('csv-file').addEventListener('change', (e) => {
+            const file = e.target.files[0];
+            if (!file) return;
+            const reader = new FileReader();
+            reader.onload = (event) => processData(event.target.result);
+            reader.readAsText(file);
+        });
+    });
+
+    // --- 3. DATA PROCESSING & CLEANING ---
+    function processData(csvText) {
+        document.getElementById('loading').style.display = 'none';
+        document.getElementById('file-upload-section').style.display = 'none';
+        document.getElementById('dashboard-content').style.display = 'block';
+
+        Papa.parse(csvText, {
+            header: true,
+            dynamicTyping: true,
+            skipEmptyLines: true,
+            complete: function(results) {
+                const rawData = results.data;
+                cleanAndVisualize(rawData);
+            }
+        });
+    }
+
+    function cleanAndVisualize(data) {
+        // Cleaning Counters
+        let stats = {
+            typosFixed: 0,
+            financialErrors: 0,
+            outliersRemoved: 0,
+            missingData: 0,
+            validRecords: 0
+        };
+
+        const cleanData = [];
+
+        data.forEach(row => {
+            let isValid = true;
+
+            // 1. Fix Typos: "Swft-X" -> "Swift-X"
+            if (row.Drone_Model === 'Swft-X') {
+                row.Drone_Model = 'Swift-X';
+                stats.typosFixed++;
+            }
+
+            // 2. Financial Errors: Negative Order Value
+            if (row.Order_Value_USD < 0) {
+                stats.financialErrors++;
+                isValid = false; // Exclude from revenue analysis
+            }
+
+            // 3. Outliers: Impossible Delivery Time (e.g. 999 or < 0)
+            if (row.Delivery_Time_Min < 0 || row.Delivery_Time_Min > MAX_DELIVERY_TIME) {
+                stats.outliersRemoved++;
+                isValid = false; 
+            }
+
+            // 4. Missing Data Check (Just tracking, not always excluding)
+            if (!row.Customer_Segment || row.Customer_Rating === null || row.Customer_Rating === "") {
+                stats.missingData++;
+                // We keep the record but might tag it 'Unknown' for segment
+                if (!row.Customer_Segment) row.Customer_Segment = "Unknown";
+            }
+
+            if (isValid) {
+                cleanData.push(row);
+            }
+        });
+
+        stats.validRecords = cleanData.length;
+        updateCleaningKPIs(stats);
+        generateInsights(cleanData);
+    }
+
+    // --- 4. VISUALIZATION LOGIC ---
+    function updateCleaningKPIs(stats) {
+        document.getElementById('kpi-typos').textContent = stats.typosFixed;
+        document.getElementById('kpi-financial').textContent = stats.financialErrors;
+        document.getElementById('kpi-outliers').textContent = stats.outliersRemoved;
+        document.getElementById('kpi-missing').textContent = stats.missingData;
+    }
+
+    function generateInsights(data) {
+        // --- A. Revenue Trends ---
+        const revBySegment = {};
+        const revByKitchen = {};
+
+        data.forEach(d => {
+            const val = d.Order_Value_USD || 0;
+            // Segment
+            revBySegment[d.Customer_Segment] = (revBySegment[d.Customer_Segment] || 0) + val;
+            // Kitchen
+            revByKitchen[d.Kitchen_ID] = (revByKitchen[d.Kitchen_ID] || 0) + val;
+        });
+
+        createBarChart('chart-revenue-segment', revBySegment, 'Revenue by Segment', 'takeaway-revenue-segment');
+        createBarChart('chart-revenue-kitchen', revByKitchen, 'Revenue by Kitchen', 'takeaway-revenue-kitchen');
+
+        // --- B. Delivery Efficiency ---
+        const efficiencyByModel = {}; // { Model: { onTime: 0, total: 0 } }
+        let totalOnTime = 0;
+
+        data.forEach(d => {
+            const model = d.Drone_Model || 'Unknown';
+            if (!efficiencyByModel[model]) efficiencyByModel[model] = { onTime: 0, total: 0 };
+            
+            efficiencyByModel[model].total++;
+            if (d.Delivery_Time_Min <= DELIVERY_GOAL_MIN) {
+                efficiencyByModel[model].onTime++;
+                totalOnTime++;
+            }
+        });
+
+        // Convert to percentages
+        const efficiencyRate = {};
+        for (const m in efficiencyByModel) {
+            efficiencyRate[m] = (efficiencyByModel[m].onTime / efficiencyByModel[m].total) * 100;
+        }
+
+        const overallRate = (totalOnTime / data.length) * 100;
+        document.getElementById('kpi-ontime-rate').textContent = overallRate.toFixed(1) + "%";
+
+        createBarChart('chart-efficiency-model', efficiencyRate, 'On-Time % (>35 min)', 'takeaway-efficiency', true);
+
+        // --- C. Risk & Experience ---
+        const weatherStats = {}; // { Weather: { ratingsSum: 0, count: 0, refunds: 0 } }
+
+        data.forEach(d => {
+            const w = d.Weather_Condition || 'Unknown';
+            if (!weatherStats[w]) weatherStats[w] = { ratingsSum: 0, count: 0, refunds: 0, ratingCount: 0 };
+            
+            weatherStats[w].count++;
+            if (d.Refund_Issued === 'Yes') {
+                weatherStats[w].refunds++;
+            }
+            if (d.Customer_Rating) {
+                weatherStats[w].ratingsSum += d.Customer_Rating;
+                weatherStats[w].ratingCount++;
+            }
+        });
+
+        const weatherRatings = {};
+        const weatherRefundRates = {};
+
+        for (const w in weatherStats) {
+            weatherRatings[w] = weatherStats[w].ratingCount > 0 ? (weatherStats[w].ratingsSum / weatherStats[w].ratingCount) : 0;
+            weatherRefundRates[w] = (weatherStats[w].refunds / weatherStats[w].count) * 100;
+        }
+
+        createBarChart('chart-weather-rating', weatherRatings, 'Avg Customer Rating', 'takeaway-weather-rating', false, 1, 5);
+        createBarChart('chart-weather-refund', weatherRefundRates, 'Refund Rate (%)', 'takeaway-weather-refund', false);
+    }
+
+    // --- 5. HELPER: GENERIC CHART BUILDER ---
+    function createBarChart(canvasId, dataObj, label, takeawayId, isPercent = false, minVal = 0, maxVal) {
+        const ctx = document.getElementById(canvasId).getContext('2d');
+        const labels = Object.keys(dataObj);
+        const values = Object.values(dataObj);
+
+        // Sort for better readability
+        const combined = labels.map((l, i) => ({ label: l, value: values[i] }));
+        combined.sort((a, b) => b.value - a.value);
+        
+        const sortedLabels = combined.map(c => c.label);
+        const sortedValues = combined.map(c => c.value);
+
+        // Generate Takeaway
+        const topItem = combined[0];
+        const bottomItem = combined[combined.length - 1];
+        let takeawayText = "";
+        
+        if (canvasId.includes('revenue')) {
+            takeawayText = `${topItem.label} is the top performer, generating $${topItem.value.toLocaleString(undefined, {maximumFractionDigits:0})}.`;
+        } else if (canvasId.includes('efficiency')) {
+            takeawayText = `${topItem.label} is the most reliable drone (${topItem.value.toFixed(1)}% on-time).`;
+        } else if (canvasId.includes('rating')) {
+            takeawayText = `${bottomItem.label} weather drives the lowest customer satisfaction (${bottomItem.value.toFixed(1)}/5).`;
+        } else if (canvasId.includes('refund')) {
+            takeawayText = `${topItem.label} weather causes the highest refund rate (${topItem.value.toFixed(1)}%).`;
+        }
+        document.getElementById(takeawayId).textContent = takeawayText;
+
+        new Chart(ctx, {
+            type: 'bar',
+            data: {
+                labels: sortedLabels,
+                datasets: [{
+                    label: label,
+                    data: sortedValues,
+                    backgroundColor: sortedLabels.map((_, i) => i === 0 ? '#38BDF8' : '#1E293B'), // Highlight top
+                    borderColor: '#38BDF8',
+                    borderWidth: 1,
+                    borderRadius: 4
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: { display: false }
+                },
+                scales: {
+                    y: {
+                        beginAtZero: false,
+                        min: minVal,
+                        max: maxVal, // explicit max for ratings
+                        grid: { color: 'rgba(255,255,255,0.1)' },
+                        ticks: { color: '#94A3B8' }
+                    },
+                    x: {
+                        grid: { display: false },
+                        ticks: { color: '#94A3B8' }
+                    }
+                }
+            }
+        });
+    }
+</script>
+
+</body>
+</html>
